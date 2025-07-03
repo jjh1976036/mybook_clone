@@ -1,9 +1,8 @@
 package mp.domain;
 
-import java.time.LocalDate;
-import java.util.*;
+import java.util.Date;
 import lombok.*;
-import mp.domain.*;
+import mp.domain.MyBook;
 import mp.infra.AbstractEvent;
 
 //<<< DDD / Domain Event
@@ -31,3 +30,5 @@ public class BookPurchased extends AbstractEvent {
     }
 }
 //>>> DDD / Domain Event
+
+

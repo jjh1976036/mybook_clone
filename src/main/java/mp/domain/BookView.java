@@ -4,6 +4,7 @@ import java.util.Date;
 import javax.persistence.*;
 import lombok.Data;
 
+//<<< EDA / CQRS
 @Entity
 @Table(name = "BookView_table")
 @Data
@@ -25,10 +26,11 @@ public class BookView {
 
     private Integer viewCount;
 
-    private Date createdAt;        // 최초 열람 시점
-    private Date lastViewedAt;     // 마지막 열람 시점
+    private Date createdAt;        // 최초 등록 시각
+    private Date lastViewedAt;     // 마지막 열람 시각
 
     private String authorId;
     private String authorName;
 }
+
 

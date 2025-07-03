@@ -1,16 +1,13 @@
 package mp.infra.dto;
 
+import lombok.Data;
+
+@Data
 public class BookReadRequest {
+    private String userId;
     private String bookId;
-
-    public String getBookId() {
-        return bookId;
-    }
-
-    public void setBookId(String bookId) {
-        this.bookId = bookId;
-    }
 }
+
 
 
 

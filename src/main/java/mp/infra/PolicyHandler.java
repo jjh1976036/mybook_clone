@@ -2,47 +2,36 @@ package mp.infra;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.kafka.annotation.KafkaListener;
-import org.springframework.stereotype.Component;
+import lombok.RequiredArgsConstructor;
 import mp.domain.MyBook;
-import mp.domain.MyBookRepository;
+import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.stereotype.Service;
 
-@Component
+@Service
+@RequiredArgsConstructor
 public class PolicyHandler {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    @KafkaListener(topics = "mp", groupId = "mybook")
-    public void listen(String message) {
-        try {
-            JsonNode json = objectMapper.readTree(message);
-            String eventType = json.get("eventType").asText();
-
-            System.out.println("🔔 [PolicyHandler] Received event: " + eventType);
-        } catch (Exception e) {
-            System.err.println("❌ Failed to parse mp message: " + e.getMessage());
-        }
-    }
-
-    // ⬇️ 이게 새로 추가할 메서드!
-    @KafkaListener(topics = "point-response", groupId = "mybook")
+    @KafkaListener(topics = "point-response", groupId = "mybook-group")
     public void handlePointResponse(String message) {
         try {
             JsonNode json = objectMapper.readTree(message);
             String userId = json.get("user_id").asText();
             String bookId = json.get("book_id").asText();
-            int point = json.get("point").asInt();
+            int pointUsed = json.get("point_used").asInt();
 
-            System.out.println("💰 [PointResponse] user_id: " + userId + ", book_id: " + bookId + ", point: " + point);
+            System.out.println("💰 [PointResponse] user_id: " + userId + ", book_id: " + bookId + ", pointUsed: " + pointUsed);
 
-            if (point == 0) {
+            if (pointUsed == 0) {
                 MyBook myBook = new MyBook();
                 myBook.setUserId(userId);
                 myBook.setBookId(bookId);
                 myBook.setUsedPoints(0);
                 myBook.setType("PURCHASE");
+                myBook.setCreatedAt(new java.util.Date());
 
-                MyBook.repository().save(myBook); // 기존 정적 접근 방식 사용
+                MyBook.repository().save(myBook);
             }
 
         } catch (Exception e) {
@@ -50,5 +39,7 @@ public class PolicyHandler {
         }
     }
 }
+
+
 
 

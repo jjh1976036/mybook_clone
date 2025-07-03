@@ -1,36 +1,15 @@
-# 공통 설정
 server:
-  port: 8080  # 기본 포트 (profile에 의해 override됨)
+  port: 8085
 
 spring:
   application:
     name: mybook
 
-jwt:
-  secret: ${JWT_SECRET:defaultTestSecretKeyForDevelopmentOnly123456789}
-  expiration: ${JWT_EXPIRATION:86400000}
-
----
-
-# 🟢 기본 (default) 개발 환경
-spring:
-  profiles: default
-
-server:
-  port: 8085
-
-books:
-  service-url: http://localhost:8081  # 🔹 Books 서비스 로컬 주소
----
-spring:
-  kafka:
-    bootstrap-servers: localhost:9092
-    consumer:
-      group-id: mybook
-      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
-      properties:
-        spring.json.trusted.packages: "*"
+  datasource:
+    url: jdbc:h2:mem:testdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
 
   jpa:
     hibernate:
@@ -41,16 +20,43 @@ spring:
         format_sql: true
         implicit_naming_strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyComponentPathImpl
 
-  datasource:
-    url: jdbc:h2:mem:testdb
-    driver-class-name: org.h2.Driver
-    username: sa
-    password:
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
 
-h2:
-  console:
-    enabled: true
-    path: /h2-console
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: mybook
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+
+  cloud:
+    stream:
+      kafka:
+        binder:
+          brokers: localhost:9092
+        streams:
+          binder:
+            configuration:
+              default:
+                key:
+                  serde: org.apache.kafka.common.serialization.Serdes$StringSerde
+                value:
+                  serde: org.apache.kafka.common.serialization.Serdes$StringSerde
+      bindings:
+        event-in:
+          group: mybook
+          destination: mp
+          contentType: application/json
+        event-out:
+          destination: mp
+          contentType: application/json
 
 logging:
   level:
@@ -59,25 +65,18 @@ logging:
 
 ---
 
-# 🐳 Docker 환경
 spring:
   profiles: docker
 
 server:
-  port: 8080
-
-books:
-  service-url: http://books:8080  # 🔹 Books 서비스 Docker 주소
+  port: 8085
 ---
 spring:
-  kafka:
-    bootstrap-servers: my-kafka:9092
-    consumer:
-      group-id: mybook
-      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
-      properties:
-        spring.json.trusted.packages: "*"
+  datasource:
+    url: jdbc:h2:mem:testdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
 
   jpa:
     hibernate:
@@ -88,16 +87,50 @@ spring:
         format_sql: true
         implicit_naming_strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyComponentPathImpl
 
-  datasource:
-    url: jdbc:h2:mem:testdb
-    driver-class-name: org.h2.Driver
-    username: sa
-    password:
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
 
-h2:
-  console:
-    enabled: true
-    path: /h2-console
+  kafka:
+    bootstrap-servers: my-kafka:9092
+    consumer:
+      group-id: mybook
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+
+  cloud:
+    stream:
+      kafka:
+        binder:
+          brokers: my-kafka:9092
+        streams:
+          binder:
+            configuration:
+              default:
+                key:
+                  serde: org.apache.kafka.common.serialization.Serdes$StringSerde
+                value:
+                  serde: org.apache.kafka.common.serialization.Serdes$StringSerde
+      bindings:
+        event-in:
+          group: mybook
+          destination: mp
+          contentType: application/json
+        event-out:
+          destination: mp
+          contentType: application/json
+
+logging:
+  level:
+    org.hibernate.type: trace
+    org.springframework.kafka: debug
+
+
 
 
 

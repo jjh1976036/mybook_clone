@@ -6,7 +6,10 @@ import lombok.Data;
 public class PurchaseRequest {
     private String userId;
     private String bookId;
-    private int point;
+    private int pointUsed;
+    private boolean isSubscribed;
+
+    // getter/setter
 }
 
 

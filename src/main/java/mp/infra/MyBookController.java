@@ -1,12 +1,12 @@
 package mp.infra;
 
 import lombok.RequiredArgsConstructor;
-import mp.domain.*;
+import mp.domain.MyBook;
+import mp.domain.MyBookRepository;
 import mp.infra.dto.BookHistoryResponse;
 import mp.infra.dto.BookReadRequest;
 import mp.infra.dto.PurchaseRequest;
 import mp.infra.kafka.BookKafkaProducer;
-import mp.infra.security.JwtVerifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -24,43 +24,43 @@ public class MyBookController {
 
     private final MyBookRepository myBookRepository;
     private final BookViewRepository bookViewRepository;
-    private final JwtVerifier jwtVerifier;
     private final BookKafkaProducer bookKafkaProducer;
     private final RestTemplate restTemplate;
 
     @Value("${books.service-url}")
     private String booksServiceUrl;
 
-    // ✅ 도서 구매
+    // ✅ 1. 도서 구매
     @PostMapping("/purchase")
-    public ResponseEntity<?> purchaseBook(
-            @RequestBody PurchaseRequest request,
-            @RequestHeader("Authorization") String authHeader
-    ) {
-        String token = authHeader.replace("Bearer ", "");
-        Map<String, Object> userInfo = jwtVerifier.verifyAndExtract(token);
-        String userId = (String) userInfo.get("user_id");
-        boolean isSubscribed = Boolean.TRUE.equals(userInfo.get("is_subscribed"));
+    public ResponseEntity<?> purchaseBook(@RequestBody PurchaseRequest request) {
+        String userId = request.getUserId();
+        boolean isSubscribed = request.isSubscribed(); // 클라이언트가 구독 여부도 함께 전달
 
         if (isSubscribed) {
             MyBook myBook = new MyBook();
             myBook.setUserId(userId);
             myBook.setBookId(request.getBookId());
             myBook.setType("PURCHASE");
-            myBook.setUsedPoints(0);
+            myBook.setUsedPoints(0); // 구독자는 포인트 사용 없음
             myBook.setCreatedAt(new Date());
             myBookRepository.save(myBook);
 
-            return ResponseEntity.ok(Map.of("message", "✅ 구독자: 구매 완료"));
+            return ResponseEntity.ok(Map.of(
+                    "message", "✅ 구독자: 구매 완료",
+                    "book_id", request.getBookId()
+            ));
         }
 
-        // 비구독자: 포인트 요청 발행
-        bookKafkaProducer.requestPointCheck(userId, request.getBookId(), request.getPoint());
+        // 비구독자: 포인트 체크용 Kafka 전송
+        bookKafkaProducer.requestPointCheck(userId, request.getBookId(), request.getPointUsed());
 
-        return ResponseEntity.accepted().body(Map.of("message", "🕐 비구독자: 포인트 확인 중"));
+        return ResponseEntity.accepted().body(Map.of(
+                "message", "🕐 비구독자: 포인트 확인 중",
+                "book_id", request.getBookId()
+        ));
     }
 
-    // ✅ 구매 이력 조회
+    // ✅ 2. 구매 이력 조회
     @GetMapping("/history")
     public List<BookHistoryResponse> getBookHistory(@RequestParam("user_id") String userId) {
         return bookViewRepository.findByUserId(userId).stream()
@@ -74,20 +74,12 @@ public class MyBookController {
                 .collect(Collectors.toList());
     }
 
-    // ✅ 도서 열람 (기록 없이 단순 조회만)
+    // ✅ 3. 도서 열람 (단순 조회)
     @PostMapping("/read")
-    public ResponseEntity<?> readBook(
-            @RequestBody BookReadRequest request,
-            @RequestHeader("Authorization") String authHeader
-    ) {
-        String token = authHeader.replace("Bearer ", "");
-        Map<String, Object> userInfo = jwtVerifier.verifyAndExtract(token);
-
-        // Books 서비스에서 도서 정보 조회
+    public ResponseEntity<?> readBook(@RequestBody BookReadRequest request) {
         String url = booksServiceUrl + "/books/" + request.getBookId();
         Map<String, Object> bookData = restTemplate.getForObject(url, Map.class);
 
-        // 열람 응답만 반환 (저장/이벤트 없음)
         return ResponseEntity.ok(Map.of(
                 "content", bookData.get("content"),
                 "audio_url", bookData.get("audio_url"),
@@ -96,6 +88,8 @@ public class MyBookController {
         ));
     }
 }
+
+
 
 
 
